@@ -11,59 +11,34 @@
     justify-content: center;
     align-items: center;
     height: 100vh;
-    flex-direction: column;
   }
   canvas {
     image-rendering: pixelated;
     background: #87CEFA;
     border: 4px solid #000;
   }
-  #startBtn {
-    display: none;
-    margin-top: 10px;
-    padding: 10px 20px;
-    font-size: 18px;
-    cursor: pointer;
-    background: #ff4444;
-    color: white;
-    border: none;
-    border-radius: 6px;
-  }
 </style>
 </head>
 <body>
 <canvas id="game" width="400" height="300"></canvas>
-<button id="startBtn">Start Again</button>
-
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-const startBtn = document.getElementById("startBtn");
 
-let lampaka, gravity, jumpStrength, groundY, speed, score, highscore;
-let boxes, boxWidth, boxHeight, minGap, maxGap;
-let gameOver = false;
+// Spielfigur
+let lampaka = { x: 50, y: 240, vy: 0, jumping: false };
+let gravity = 0.6;
+let jumpStrength = -10;
+let groundY = 240;
+let speed = 2;
+let score = 0;
 
-// Highscore laden
-highscore = localStorage.getItem("highscore") || 0;
-
-function initGame() {
-  lampaka = { x: 50, y: 240, vy: 0, jumping: false };
-  gravity = 0.6;
-  jumpStrength = -10;
-  groundY = 240;
-  speed = 2;
-  score = 0;
-  boxes = [];
-  boxWidth = 20;
-  boxHeight = 30;
-  minGap = 120;
-  maxGap = 250;
-
-  for (let i = 0; i < 5; i++) spawnBox();
-  gameOver = false;
-  startBtn.style.display = "none";
-}
+// Hindernisse
+let boxes = [];
+let boxWidth = 20;
+let boxHeight = 20;
+let minGap = 120;
+let maxGap = 250;
 
 function spawnBox() {
   let lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : canvas.width;
@@ -71,7 +46,11 @@ function spawnBox() {
   boxes.push({ x: lastX + gap, y: groundY });
 }
 
+// Starte mit ein paar Kartons
+for (let i = 0; i < 5; i++) spawnBox();
+
 function autoJump() {
+  // Falls Karton nahe ist und wir nicht springen → spring!
   let nextBox = boxes.find(b => b.x > lampaka.x);
   if (nextBox && nextBox.x - lampaka.x < 60 && !lampaka.jumping) {
     lampaka.vy = jumpStrength;
@@ -79,27 +58,7 @@ function autoJump() {
   }
 }
 
-function checkCollision() {
-  for (let box of boxes) {
-    if (
-      lampaka.x < box.x + boxWidth &&
-      lampaka.x + 20 > box.x &&
-      lampaka.y < box.y + boxHeight &&
-      lampaka.y + 20 > box.y
-    ) {
-      gameOver = true;
-      startBtn.style.display = "block";
-      if (score > highscore) {
-        highscore = score;
-        localStorage.setItem("highscore", highscore);
-      }
-    }
-  }
-}
-
 function update() {
-  if (gameOver) return;
-
   autoJump();
 
   lampaka.vy += gravity;
@@ -111,68 +70,62 @@ function update() {
     lampaka.jumping = false;
   }
 
+  // Kartons bewegen
   for (let box of boxes) {
     box.x -= speed;
   }
 
+  // Neue Kartons hinzufügen
   if (boxes[0].x + boxWidth < 0) {
     boxes.shift();
     spawnBox();
     score++;
     if (score % 5 === 0) speed += 0.2;
   }
-
-  checkCollision();
 }
 
 function drawLampaka(x, y) {
-  ctx.fillStyle = "#8B4513";
-  ctx.fillRect(x, y, 20, 20);
+  // Körper
+  ctx.fillStyle = "#8B4513"; // Braun
+  ctx.fillRect(x, y, 20, 20); // Körper
+
+  // Kopf
   ctx.fillRect(x + 15, y - 10, 12, 12);
 
+  // Auge
   ctx.fillStyle = "#fff";
   ctx.fillRect(x + 22, y - 8, 3, 3);
   ctx.fillStyle = "#000";
   ctx.fillRect(x + 23, y - 7, 1, 1);
 
+  // Weihnachtsmütze
   ctx.fillStyle = "#ff0000";
-  ctx.fillRect(x + 15, y - 16, 12, 6);
+  ctx.fillRect(x + 15, y - 16, 12, 6); // roter Teil
   ctx.fillStyle = "#fff";
-  ctx.fillRect(x + 15, y - 10, 12, 2);
-  ctx.fillRect(x + 26, y - 18, 3, 3);
-}
-
-function drawCactus(x, y) {
-  ctx.fillStyle = "#228B22";
-  ctx.fillRect(x, y - 10, boxWidth, boxHeight); // Stamm
-  ctx.fillRect(x - 5, y - 20, 10, 10); // linker Arm
-  ctx.fillRect(x + boxWidth - 5, y - 20, 10, 10); // rechter Arm
+  ctx.fillRect(x + 15, y - 10, 12, 2); // weißer Rand
+  ctx.fillRect(x + 26, y - 18, 3, 3);  // Bommel
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // Boden
   ctx.fillStyle = "#228B22";
   ctx.fillRect(0, groundY + 20, canvas.width, canvas.height - groundY);
 
+  // Lampaka
   drawLampaka(lampaka.x, lampaka.y);
 
+  // Kartons
+  ctx.fillStyle = "#A0522D";
   for (let box of boxes) {
-    drawCactus(box.x, box.y);
+    ctx.fillRect(box.x, box.y, boxWidth, boxHeight);
   }
 
+  // Punkte
   ctx.fillStyle = "#fff";
   ctx.font = "16px monospace";
   ctx.fillText("Punkte: " + score, 10, 20);
-  ctx.fillText("Highscore: " + highscore, 10, 40);
-
-  if (gameOver) {
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#fff";
-    ctx.font = "24px monospace";
-    ctx.fillText("GAME OVER", canvas.width / 2 - 70, canvas.height / 2);
-  }
 }
 
 function loop() {
@@ -181,10 +134,6 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-startBtn.addEventListener("click", initGame);
-
-// Start beim Laden
-initGame();
 loop();
 </script>
 </body>
