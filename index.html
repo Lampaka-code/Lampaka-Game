@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Lampaka Jump</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    overflow: hidden;
+    touch-action: none; /* verhindert Scrollen beim Tippen */
+  }
+  canvas {
+    image-rendering: pixelated;
+    display: block;
+    background: #87CEFA;
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+// Basisspielfeld
+const baseWidth = 1080;
+const baseHeight = 1920;
+
+// Größenanpassung
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Spielfigur
+let lampaka = { x: 200, y: 1600, vy: 0, jumping: false };
+let gravity = 1.2;
+let jumpStrength = -25;
+let groundY = 1600;
+let speed = 8;
+let score = 0;
+let highscore = 0;
+let gamePaused = false;
+
+// Hindernisse
+let boxes = [];
+let boxWidth = 80;
+let boxHeight = 80;
+let minGap = 300;
+let maxGap = 800;
+
+function spawnBox() {
+  let lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : baseWidth;
+  let gap = Math.floor(Math.random() * (maxGap - minGap) + minGap);
+  boxes.push({ x: lastX + gap, y: groundY });
+}
+
+// Erste Hindernisse
+for (let i = 0; i < 5; i++) spawnBox();
+
+function jump() {
+  if (!lampaka.jumping && !gamePaused) {
+    lampaka.vy = jumpStrength;
+    lampaka.jumping = true;
+  }
+}
+
+// Touch & Klick
+canvas.addEventListener("touchstart", jump);
+canvas.addEventListener("mousedown", jump);
+
+function update() {
+  if (gamePaused) return;
+
+  lampaka.vy += gravity;
+  lampaka.y += lampaka.vy;
+
+  if (lampaka.y >= groundY) {
+    lampaka.y = groundY;
+    lampaka.vy = 0;
+    lampaka.jumping = false;
+  }
+
+  for (let box of boxes) {
+    box.x -= speed;
+  }
+
+  if (boxes[0].x + boxWidth < 0) {
+    boxes.shift();
+    spawnBox();
+    score++;
+    if (score > highscore) highscore = score;
+    if (score % 5 === 0) speed += 0.5;
+  }
+
+  // Kollision → kurzer Stopp
+  for (let box of boxes) {
+    if (
+      lampaka.x < box.x + boxWidth &&
+      lampaka.x + 80 > box.x &&
+      lampaka.y + 80 > box.y
+    ) {
+      gamePaused = true;
+      setTimeout(() => {
+        score = 1;
+        speed = 8;
+        boxes = [];
+        for (let i = 0; i < 5; i++) spawnBox();
+        gamePaused = false;
+      }, 1000);
+    }
+  }
+}
+
+function drawLampaka(x, y) {
+  // Körper
+  ctx.fillStyle = "#8B4513"; // Braun
+  ctx.fillRect(x, y, 80, 80);
+
+  // Kopf
+  ctx.fillRect(x + 60, y - 40, 50, 50);
+
+  // Auge
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(x + 90, y - 25, 10, 10);
+  ctx.fillStyle = "#000";
+  ctx.fillRect(x + 93, y - 23, 5, 5);
+
+  // Weihnachtsmütze
+  ctx.fillStyle = "#ff0000";
+  ctx.fillRect(x + 60, y - 60, 50, 20); // Rot
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(x + 60, y - 40, 50, 5); // Weißer Rand
+  ctx.fillRect(x + 110, y - 70, 10, 10); // Bommel
+}
+
+function draw() {
+  // Skalierung berechnen
+  let scaleX = canvas.width / baseWidth;
+  let scaleY = canvas.height / baseHeight;
+  ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+
+  // Hintergrund löschen
+  ctx.clearRect(0, 0, baseWidth, baseHeight);
+
+  // Boden
+  ctx.fillStyle = "#228B22";
+  ctx.fillRect(0, groundY + 80, baseWidth, baseHeight - groundY);
+
+  // Lampaka
+  drawLampaka(lampaka.x, lampaka.y);
+
+  // Kartons
+  ctx.fillStyle = "#A0522D";
+  for (let box of boxes) {
+    ctx.fillRect(box.x, box.y, boxWidth, boxHeight);
+  }
+
+  // Punkte & Highscore
+  ctx.fillStyle = "#fff";
+  ctx.font = "48px monospace";
+  ctx.fillText("Punkte: " + score, 50, 100);
+  ctx.fillText("Highscore: " + highscore, 50, 170);
+
+  if (gamePaused) {
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, 0, baseWidth, baseHeight);
+    ctx.fillStyle = "#fff";
+    ctx.font = "80px monospace";
+    ctx.fillText("💥", baseWidth/2 - 40, baseHeight/2);
+  }
+
+  // Zurücksetzen der Transformation
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
