@@ -37,10 +37,6 @@ const ctx = canvas.getContext("2d");
 let score = 0;
 let highscore = 0;
 
-// Spielfigur laden
-const lampakaImg = new Image();
-lampakaImg.src = "lampaka.png"; // muss im gleichen Ordner liegen
-
 // Spielfeldgröße anpassen
 function resizeCanvas() {
   canvas.width = window.innerWidth;
@@ -51,10 +47,10 @@ resizeCanvas();
 
 // Spielfigur
 const lampaka = {
-  x: canvas.width * 0.2,
-  y: canvas.height - 150,
-  width: 100,
-  height: 100,
+  x: 0,
+  y: 0,
+  width: 0,
+  height: 0,
   vy: 0,
   gravity: 0.8,
   jumpPower: -15,
@@ -71,6 +67,21 @@ let spawnInterval = 90;
 let running = true;
 let pauseTimer = 0;
 
+// Bild laden
+const lampakaImg = new Image();
+lampakaImg.src = "LAmpaka.png"; // exakt wie Datei-Name!
+lampakaImg.onload = () => {
+  // Größe auf 15% der Bildschirmbreite anpassen
+  lampaka.width = canvas.width * 0.15;
+  lampaka.height = lampaka.width;
+  lampaka.x = canvas.width * 0.2;
+  lampaka.y = canvas.height - lampaka.height - 50;
+  loop();
+};
+lampakaImg.onerror = () => {
+  alert("Fehler: Bild 'LAmpaka.png' nicht gefunden!");
+};
+
 // Springen bei Touch/Klick
 function jump() {
   if (lampaka.grounded) {
@@ -81,30 +92,27 @@ function jump() {
 document.addEventListener("touchstart", jump);
 document.addEventListener("mousedown", jump);
 
-// Neues Hindernis erzeugen
+// Neues Hindernis
 function spawnBox() {
-  let height = 60;
-  let width = 60;
-  let y = canvas.height - height - 50;
+  let size = 60;
+  let y = canvas.height - size - 50;
   boxes.push({
     x: canvas.width,
     y: y,
-    width: width,
-    height: height
+    width: size,
+    height: size
   });
 }
 
-// Update-Spiel
+// Update
 function update() {
   if (!running) {
     pauseTimer--;
-    if (pauseTimer <= 0) {
-      resetGame();
-    }
+    if (pauseTimer <= 0) resetGame();
     return;
   }
 
-  // Lampaka Physik
+  // Physik
   lampaka.vy += lampaka.gravity;
   lampaka.y += lampaka.vy;
 
@@ -118,28 +126,26 @@ function update() {
   for (let i = boxes.length - 1; i >= 0; i--) {
     boxes[i].x -= boxSpeed;
 
-    // Überwinden der Kartons (ohne Game Over)
     if (boxes[i].x + boxes[i].width < lampaka.x && !boxes[i].scored) {
       score++;
       boxes[i].scored = true;
       if (score > highscore) highscore = score;
     }
 
-    // Entfernen wenn außerhalb
     if (boxes[i].x + boxes[i].width < 0) {
       boxes.splice(i, 1);
     }
   }
 
-  // Kartons spawnen
+  // Neue Kartons
   spawnTimer--;
   if (spawnTimer <= 0) {
     spawnBox();
-    spawnTimer = spawnInterval + Math.floor(Math.random() * 50); // Abstand variabel
+    spawnTimer = spawnInterval + Math.floor(Math.random() * 50);
   }
 }
 
-// Render-Spiel
+// Zeichnen
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -147,7 +153,7 @@ function draw() {
   ctx.fillStyle = "#654321";
   ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
 
-  // Lampaka zeichnen
+  // Lampaka
   ctx.drawImage(lampakaImg, lampaka.x, lampaka.y, lampaka.width, lampaka.height);
 
   // Kartons
@@ -159,23 +165,22 @@ function draw() {
   document.getElementById("scoreBoard").innerText = `Score: ${score} | Highscore: ${highscore}`;
 }
 
-// Reset ohne Game Over
+// Reset
 function resetGame() {
   score = 0;
   boxes = [];
-  lampaka.y = canvas.height - 150;
+  lampaka.y = canvas.height - lampaka.height - 50;
   lampaka.vy = 0;
   lampaka.grounded = true;
   running = true;
 }
 
-// Hauptloop
+// Loop
 function loop() {
   update();
   draw();
   requestAnimationFrame(loop);
 }
-loop();
 </script>
 </body>
 </html>
