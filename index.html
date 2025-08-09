@@ -1,186 +1,194 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lampaka Game</title>
+<meta charset="UTF-8" />
+<title>Lampaka Weihnachts-Hüpfer</title>
 <style>
-  body {
-    margin: 0;
-    background: #87ceeb;
-    overflow: hidden;
+  body, html {
+    margin: 0; padding: 0; overflow: hidden;
+    background: #222;
+    display: flex; justify-content: center; align-items: center;
+    height: 100vh;
   }
   canvas {
-    display: block;
-    background: #cce6ff;
+    background: #87CEFA;
+    border: 4px solid #000;
+    image-rendering: pixelated;
   }
-  #scoreBoard {
+  #startBtn {
     position: absolute;
-    top: 10px;
-    left: 10px;
-    font-family: Arial, sans-serif;
-    font-size: 24px;
-    color: #333;
-    background: rgba(255,255,255,0.7);
-    padding: 6px 12px;
-    border-radius: 8px;
+    top: 20px; right: 20px;
+    padding: 10px 20px;
+    font-size: 18px;
+    cursor: pointer;
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    display: none;
+    z-index: 10;
   }
 </style>
 </head>
 <body>
-<div id="scoreBoard">Score: 0 | Highscore: 0</div>
-<canvas id="gameCanvas"></canvas>
+
+<canvas id="game"></canvas>
+<button id="startBtn">Nochmal starten</button>
+
 <script>
-const canvas = document.getElementById("gameCanvas");
+const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+const startBtn = document.getElementById("startBtn");
 
-let score = 0;
-let highscore = 0;
+let lampakaImg = new Image();
+lampakaImg.src = "LAmpaka.png";
 
-// Spielfeldgröße anpassen
+let lampaka, gravity, jumpStrength, groundY, speed, score, highscore;
+let boxes, boxWidth, boxHeight, minGap, maxGap;
+let gameOver = false;
+
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+  groundY = canvas.height * 0.8;
 }
 window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
 
-// Spielfigur
-const lampaka = {
-  x: 0,
-  y: 0,
-  width: 0,
-  height: 0,
-  vy: 0,
-  gravity: 0.8,
-  jumpPower: -15,
-  grounded: true
-};
+highscore = localStorage.getItem("highscore") || 0;
 
-// Kartons (Hindernisse)
-let boxes = [];
-let boxSpeed = 6;
-let spawnTimer = 0;
-let spawnInterval = 90;
+function initGame() {
+  resizeCanvas();
 
-// Spielstatus
-let running = true;
-let pauseTimer = 0;
+  lampaka = { x: canvas.width * 0.1, y: groundY, vy: 0, jumping: false };
+  gravity = canvas.height * 0.004;
+  jumpStrength = -canvas.height * 0.015;
+  speed = canvas.width * 0.004;
+  score = 0;
 
-// Bild laden
-const lampakaImg = new Image();
-lampakaImg.src = "LAmpaka.png"; // exakt wie Datei-Name!
-lampakaImg.onload = () => {
-  // Größe auf 15% der Bildschirmbreite anpassen
-  lampaka.width = canvas.width * 0.15;
-  lampaka.height = lampaka.width;
-  lampaka.x = canvas.width * 0.2;
-  lampaka.y = canvas.height - lampaka.height - 50;
-  loop();
-};
-lampakaImg.onerror = () => {
-  alert("Fehler: Bild 'LAmpaka.png' nicht gefunden!");
-};
+  boxWidth = canvas.width * 0.04;
+  boxHeight = canvas.height * 0.1;
+  minGap = canvas.width * 0.15;
+  maxGap = canvas.width * 0.3;
 
-// Springen bei Touch/Klick
-function jump() {
-  if (lampaka.grounded) {
-    lampaka.vy = lampaka.jumpPower;
-    lampaka.grounded = false;
-  }
+  boxes = [];
+  for (let i = 0; i < 5; i++) spawnBox();
+
+  gameOver = false;
+  startBtn.style.display = "none";
 }
-document.addEventListener("touchstart", jump);
-document.addEventListener("mousedown", jump);
 
-// Neues Hindernis
 function spawnBox() {
-  let size = 60;
-  let y = canvas.height - size - 50;
-  boxes.push({
-    x: canvas.width,
-    y: y,
-    width: size,
-    height: size
-  });
+  let lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : canvas.width;
+  let gap = Math.random() * (maxGap - minGap) + minGap;
+  boxes.push({ x: lastX + gap, y: groundY });
 }
 
-// Update
-function update() {
-  if (!running) {
-    pauseTimer--;
-    if (pauseTimer <= 0) resetGame();
-    return;
+function jump() {
+  if (!lampaka.jumping && !gameOver) {
+    lampaka.vy = jumpStrength;
+    lampaka.jumping = true;
   }
+}
 
-  // Physik
-  lampaka.vy += lampaka.gravity;
+// Touch & Klick zum Springen
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  jump();
+});
+canvas.addEventListener("mousedown", jump);
+
+function checkCollision() {
+  for (let box of boxes) {
+    if (
+      lampaka.x + lampakaImg.width * 0.4 > box.x &&
+      lampaka.x < box.x + boxWidth &&
+      lampaka.y + lampakaImg.height * 0.8 > box.y - boxHeight &&
+      lampaka.y < box.y
+    ) {
+      gameOver = true;
+      startBtn.style.display = "block";
+      if (score > highscore) {
+        highscore = score;
+        localStorage.setItem("highscore", highscore);
+      }
+    }
+  }
+}
+
+function update() {
+  if (gameOver) return;
+
+  lampaka.vy += gravity;
   lampaka.y += lampaka.vy;
 
-  if (lampaka.y + lampaka.height >= canvas.height - 50) {
-    lampaka.y = canvas.height - 50 - lampaka.height;
+  if (lampaka.y >= groundY) {
+    lampaka.y = groundY;
     lampaka.vy = 0;
-    lampaka.grounded = true;
+    lampaka.jumping = false;
   }
 
-  // Kartons bewegen
-  for (let i = boxes.length - 1; i >= 0; i--) {
-    boxes[i].x -= boxSpeed;
-
-    if (boxes[i].x + boxes[i].width < lampaka.x && !boxes[i].scored) {
-      score++;
-      boxes[i].scored = true;
-      if (score > highscore) highscore = score;
-    }
-
-    if (boxes[i].x + boxes[i].width < 0) {
-      boxes.splice(i, 1);
-    }
+  for (let box of boxes) {
+    box.x -= speed;
   }
 
-  // Neue Kartons
-  spawnTimer--;
-  if (spawnTimer <= 0) {
+  if (boxes[0].x + boxWidth < 0) {
+    boxes.shift();
     spawnBox();
-    spawnTimer = spawnInterval + Math.floor(Math.random() * 50);
+    score++;
+    if (score % 5 === 0) speed += canvas.width * 0.0001;
   }
+
+  checkCollision();
 }
 
-// Zeichnen
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Boden
-  ctx.fillStyle = "#654321";
-  ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+  ctx.fillStyle = "#228B22";
+  ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
 
-  // Lampaka
-  ctx.drawImage(lampakaImg, lampaka.x, lampaka.y, lampaka.width, lampaka.height);
+  // Lampaka Bild zeichnen (leicht nach oben verschoben für bessere Position)
+  ctx.drawImage(lampakaImg, lampaka.x, lampaka.y - lampakaImg.height * 0.8);
 
-  // Kartons
-  ctx.fillStyle = "#b5651d";
+  // Kakteen (einfach grüne Rechtecke)
+  ctx.fillStyle = "#006400";
   for (let box of boxes) {
-    ctx.fillRect(box.x, box.y, box.width, box.height);
+    ctx.fillRect(box.x, box.y - boxHeight, boxWidth, boxHeight);
   }
 
-  document.getElementById("scoreBoard").innerText = `Score: ${score} | Highscore: ${highscore}`;
+  // Punktestand
+  ctx.fillStyle = "#fff";
+  ctx.font = `${canvas.height * 0.03}px monospace`;
+  ctx.fillText("Punkte: " + score, 10, 30);
+  ctx.fillText("Highscore: " + highscore, 10, 60);
+
+  if (gameOver) {
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#fff";
+    ctx.font = `${canvas.height * 0.07}px monospace`;
+    ctx.textAlign = "center";
+    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
+    ctx.textAlign = "start";
+  }
 }
 
-// Reset
-function resetGame() {
-  score = 0;
-  boxes = [];
-  lampaka.y = canvas.height - lampaka.height - 50;
-  lampaka.vy = 0;
-  lampaka.grounded = true;
-  running = true;
-}
-
-// Loop
 function loop() {
   update();
   draw();
   requestAnimationFrame(loop);
 }
+
+startBtn.addEventListener("click", () => {
+  initGame();
+});
+
+lampakaImg.onload = () => {
+  initGame();
+  loop();
+};
 </script>
+
 </body>
 </html>
