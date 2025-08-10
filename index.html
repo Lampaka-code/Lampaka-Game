@@ -9,10 +9,9 @@
     padding: 0;
     background: #000;
     overflow: hidden;
-    touch-action: none; /* verhindert Scrollen beim Tippen */
+    touch-action: none;
   }
   canvas {
-    image-rendering: pixelated;
     display: block;
     background: #87CEFA;
   }
@@ -24,11 +23,13 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// Basisgröße für Skalierung
 const baseWidth = 1080;
 const baseHeight = 1920;
 
-// Größenanpassung an Bildschirm
+// Bild vom Lampaka laden
+const lampakaImg = new Image();
+lampakaImg.src = "https://raw.githubusercontent.com/deinname/deinrepo/main/lampaka.png"; // URL anpassen!
+
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -36,24 +37,24 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// Spielfigur (kleiner gemacht)
+// Spielfigur
 let lampaka = { x: 200, y: 1600, vy: 0, jumping: false };
-let lampakaWidth = 60;
-let lampakaHeight = 60;
+let lampakaWidth = 80;
+let lampakaHeight = 80;
 let gravity = 1.2;
-let jumpStrength = -30; // Höherer Sprung
+let jumpStrength = -30;
 let groundY = 1600;
 let speed = 8;
 let score = 0;
 let highscore = 0;
 let gamePaused = false;
 
-// Hindernisse (kleiner und kompakter)
+// Hindernisse
 let boxes = [];
 let boxWidth = 50;
 let boxHeight = 50;
-let minGap = 300;
-let maxGap = 800;
+let minGap = 600; // neuer größerer Abstand
+let maxGap = 1400;
 
 function spawnBox() {
   let lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : baseWidth;
@@ -61,10 +62,8 @@ function spawnBox() {
   boxes.push({ x: lastX + gap, y: groundY + (lampakaHeight - boxHeight) });
 }
 
-// Erste Hindernisse
 for (let i = 0; i < 5; i++) spawnBox();
 
-// Steuerung
 function jump() {
   if (!lampaka.jumping && !gamePaused) {
     lampaka.vy = jumpStrength;
@@ -98,7 +97,7 @@ function update() {
     if (score % 5 === 0) speed += 0.5;
   }
 
-  // Kollision → kurzer Stopp
+  // "Kollision" -> kurzer Stopp
   for (let box of boxes) {
     if (
       lampaka.x < box.x + boxWidth &&
@@ -117,28 +116,6 @@ function update() {
   }
 }
 
-function drawLampaka(x, y) {
-  // Körper
-  ctx.fillStyle = "#8B4513"; // Braun
-  ctx.fillRect(x, y, lampakaWidth, lampakaHeight);
-
-  // Kopf
-  ctx.fillRect(x + lampakaWidth - 20, y - 25, 40, 40);
-
-  // Auge
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(x + lampakaWidth + 5, y - 15, 8, 8);
-  ctx.fillStyle = "#000";
-  ctx.fillRect(x + lampakaWidth + 7, y - 13, 4, 4);
-
-  // Weihnachtsmütze
-  ctx.fillStyle = "#ff0000";
-  ctx.fillRect(x + lampakaWidth - 20, y - 45, 40, 15); // Rot
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(x + lampakaWidth - 20, y - 30, 40, 4); // Weißer Rand
-  ctx.fillRect(x + lampakaWidth + 20, y - 55, 8, 8); // Bommel
-}
-
 function draw() {
   let scaleX = canvas.width / baseWidth;
   let scaleY = canvas.height / baseHeight;
@@ -150,8 +127,8 @@ function draw() {
   ctx.fillStyle = "#228B22";
   ctx.fillRect(0, groundY + lampakaHeight, baseWidth, baseHeight - groundY);
 
-  // Lampaka
-  drawLampaka(lampaka.x, lampaka.y);
+  // Lampaka-Bild
+  ctx.drawImage(lampakaImg, lampaka.x, lampaka.y, lampakaWidth, lampakaHeight);
 
   // Kartons
   ctx.fillStyle = "#A0522D";
