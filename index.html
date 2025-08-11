@@ -40,8 +40,8 @@ resizeCanvas();
 let lampaka = { x: 200, y: 1600, vy: 0, jumping: false };
 let lampakaWidth = 50;  // Bildgröße gleich Boxen-Größe
 let lampakaHeight = 50;
-let gravity = 1.2;
-let jumpStrength = -30;
+let gravity = 0.06;       // Angepasste kleinere Gravitation (Zeitabhängig)
+let jumpStrength = -1.8;  // Stärkerer Sprung (zeitabhängig)
 let groundY = 1600;
 let speed = 8;
 let score = 0;
@@ -78,11 +78,14 @@ function jump() {
 canvas.addEventListener("touchstart", jump);
 canvas.addEventListener("mousedown", jump);
 
-function update() {
+// Zeit für framerate-unabhängiges Update
+let lastTime = 0;
+
+function update(delta) {
   if (gamePaused) return;
 
-  lampaka.vy += gravity;
-  lampaka.y += lampaka.vy;
+  lampaka.vy += gravity * delta;
+  lampaka.y += lampaka.vy * delta;
 
   if (lampaka.y >= groundY) {
     lampaka.y = groundY;
@@ -91,7 +94,7 @@ function update() {
   }
 
   for (let box of boxes) {
-    box.x -= speed;
+    box.x -= speed * (delta / 16.67); // 16.67ms ≈ 60fps Basis
   }
 
   if (boxes[0].x + boxWidth < 0) {
@@ -102,12 +105,12 @@ function update() {
     if (score % 5 === 0) speed += 0.5;
   }
 
-  // Kollision → kurzer Stopp
+  // Kollision → kurzer Stopp (leicht vergrößerte Kollisionshöhe, damit Lampaka nicht zu früh „berührt“)
   for (let box of boxes) {
     if (
       lampaka.x < box.x + boxWidth &&
       lampaka.x + lampakaWidth > box.x &&
-      lampaka.y + lampakaHeight > box.y
+      lampaka.y + lampakaHeight * 0.8 > box.y
     ) {
       gamePaused = true;
       setTimeout(() => {
@@ -164,8 +167,12 @@ function draw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
-function loop() {
-  update();
+function loop(timestamp = 0) {
+  if (!lastTime) lastTime = timestamp;
+  let delta = timestamp - lastTime;
+  lastTime = timestamp;
+
+  update(delta);
   draw();
   requestAnimationFrame(loop);
 }
