@@ -26,16 +26,16 @@ const ctx = canvas.getContext("2d");
 const baseWidth = 1080;
 const baseHeight = 1920;
 
-// Bild vom Lampaka laden (Pfad ggf. anpassen)
+// Bild vom Lampaka laden (im gleichen Ordner wie HTML)
 const lampakaImg = new Image();
-lampakaImg.src = "lampaka.png"; // im selben Ordner wie HTML
+lampakaImg.src = "LAmpaka.png"; // Name beachten
 lampakaImg.onload = () => {
   console.log("Lampaka Bild geladen!");
   initGame();
   loop();
 };
 lampakaImg.onerror = () => {
-  console.error("Lampaka Bild konnte nicht geladen werden!");
+  console.error("LAmpaka.png konnte nicht geladen werden!");
 };
 
 function resizeCanvas() {
@@ -47,7 +47,7 @@ resizeCanvas();
 
 // Spielfigur
 let lampaka = { x: 200, y: 0, vy: 0, jumping: false };
-let lampakaWidth = 60;
+let lampakaWidth = 60;  // Spielfigur kleiner
 let lampakaHeight = 60;
 let gravity = 1.2;
 let jumpStrength = -28;
@@ -61,11 +61,11 @@ let gamePaused = false;
 let boxes = [];
 let boxWidth = 50;
 let boxHeight = 50;
-let minGap = 700; // größerer Abstand
+let minGap = 700;  // größerer Abstand
 let maxGap = 1400;
 
 function initGame() {
-  groundY = baseHeight - 200; // Bodenposition in "virtueller" Höhe
+  groundY = baseHeight - 200;
   lampaka.y = groundY;
 
   score = 0;
@@ -114,7 +114,7 @@ function update() {
     if (score % 5 === 0) speed += 0.5;
   }
 
-  // Kollision prüfen
+  // Kollision
   for (let box of boxes) {
     if (
       lampaka.x < box.x + boxWidth &&
