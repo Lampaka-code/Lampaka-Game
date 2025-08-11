@@ -40,7 +40,7 @@ resizeCanvas();
 let lampaka = { x: 200, y: 1600, vy: 0, jumping: false };
 let lampakaWidth = 100;  // Bildgröße gleich Boxen-Größe
 let lampakaHeight = 100;
-let gravity = 0.70;       // Angepasste kleinere Gravitation (Zeitabhängig)
+let gravity = 0.06;       // Angepasste kleinere Gravitation (Zeitabhängig)
 let jumpStrength = -8.8;  // Stärkerer Sprung (zeitabhängig)
 let groundY = 1600;
 let speed = 20;
@@ -50,8 +50,8 @@ let gamePaused = false;
 
 // Hindernisse
 let boxes = [];
-let boxWidth = 50;
-let boxHeight = 50;
+let boxWidth = 25;
+let boxHeight = 25;
 let minGap = 300;
 let maxGap = 800;
 
@@ -66,7 +66,7 @@ for (let i = 0; i < 5; i++) spawnBox();
 
 // Lampaka Bild laden
 const lampakaImg = new Image();
-lampakaImg.src = "Lampaka.png";  // Pfad zu deinem Bild, ggf. anpassen
+lampakaImg.src = "LAmpaka.png";  // Pfad zu deinem Bild, ggf. anpassen
 
 // Steuerung
 function jump() {
@@ -181,6 +181,7 @@ loop();
 </script>
 </body>
 </html>
+
 
 
 
