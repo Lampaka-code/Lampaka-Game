@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Lampaka Jump</title>
+<title>Lampaka Jump - Stabiler Abstand</title>
 <style>
   html, body {
     margin: 0; padding: 0;
     background: #87CEFA;
     overflow: hidden;
-    touch-action: manipulation;
     user-select: none;
+    touch-action: manipulation;
   }
   canvas {
     display: block;
@@ -25,6 +25,7 @@
 <canvas id="game"></canvas>
 
 <script>
+// Canvas Setup
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
@@ -38,9 +39,11 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-const groundHeight = 100;
-const lampakaSize = 80;
+// Spielparameter
+const groundHeight = 100; // Höhe des Bodens
+const lampakaSize = 80;   // Größe von Lampaka und Kakteen
 
+// Lampaka Objekt
 let lampaka = {
   x: width * 0.15,
   y: height - groundHeight - lampakaSize,
@@ -48,47 +51,59 @@ let lampaka = {
   jumping: false
 };
 
-const gravity = 2.0;
+// Physik & Bewegung
+const gravity = 2;
 const jumpStrength = -40;
-let speed = 4;
+let speed = 3;  // langsamere Geschwindigkeit
 let score = 0;
 let highscore = localStorage.getItem('highscore') || 0;
 let gameOver = false;
 
-let boxes = [];
-const minGap = 600;  // größerer Abstand für mehr Platz
-const maxGap = 900;
+// Kakteen
+let cacti = [];
+const minGap = 700; // Mindestabstand zwischen Kakteen
+const maxGap = 1200;
 
+// Bild für Lampaka laden (bitte "Lampaka.png" in gleichen Ordner legen)
 const lampakaImg = new Image();
-lampakaImg.src = "Lampaka.png"; // Pfad zu deinem Bild
+lampakaImg.src = "Lampaka.png";
 
-// Spawnt neue Kakteen mit garantiertem Mindestabstand
-function spawnBox() {
-  let lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : width + 200;
+// Hilfsfunktion: Neuer Kaktus anlegen mit garantiertem Abstand
+function spawnCactus() {
+  // Letzter Kaktus oder Bildschirmende als Startpunkt
+  let lastX = cacti.length > 0 ? cacti[cacti.length - 1].x : width + 200;
+  // Abstand zufällig zwischen minGap und maxGap
   let gap = Math.random() * (maxGap - minGap) + minGap;
-  boxes.push({ x: lastX + gap, y: height - groundHeight });
+  // Neuer Kaktus positionieren
+  cacti.push({ x: lastX + gap, y: height - groundHeight });
 }
 
-// Initiale Kakteen erzeugen, mit Abstand zueinander
-function initBoxes() {
-  boxes = [];
+// Initial 5 Kakteen generieren
+function initCacti() {
+  cacti = [];
   let currentX = width + 200;
   for (let i = 0; i < 5; i++) {
-    boxes.push({ x: currentX, y: height - groundHeight });
+    cacti.push({ x: currentX, y: height - groundHeight });
     currentX += Math.random() * (maxGap - minGap) + minGap;
   }
 }
-initBoxes();
+initCacti();
 
+// Zeichnet einen Kaktus als grüne Pixel-Form, passend zur Größe
 function drawCactus(x, y, size) {
-  ctx.fillStyle = '#228B22';
   const w = size * 0.5;
   const h = size;
+
+  ctx.fillStyle = '#228B22';
+  // Stamm
   ctx.fillRect(x, y - h, w, h);
+  // Linker Arm
   ctx.fillRect(x - w * 0.5, y - h * 0.7, w * 0.5, h * 0.3);
+  // Rechter Arm
   ctx.fillRect(x + w, y - h * 0.7, w * 0.5, h * 0.3);
 }
 
+// Sprung-Funktion, auf Touch oder Klick reagieren
 function jump() {
   if (!lampaka.jumping && !gameOver) {
     lampaka.vy = jumpStrength;
@@ -98,45 +113,47 @@ function jump() {
 window.addEventListener('touchstart', e => { e.preventDefault(); jump(); }, { passive: false });
 window.addEventListener('mousedown', jump);
 
+// Update Logik
 function update() {
   if (gameOver) return;
 
+  // Schwerkraft & Bewegung
   lampaka.vy += gravity;
   lampaka.y += lampaka.vy;
 
+  // Auf Boden begrenzen
   if (lampaka.y > height - groundHeight - lampakaSize) {
     lampaka.y = height - groundHeight - lampakaSize;
     lampaka.vy = 0;
     lampaka.jumping = false;
   }
 
-  for (let box of boxes) {
-    box.x -= speed;
+  // Kakteen bewegen
+  for (let c of cacti) {
+    c.x -= speed;
   }
 
-  // Entferne Kakteen die raus sind
-  while (boxes.length > 0 && boxes[0].x + lampakaSize * 0.5 < 0) {
-    boxes.shift();
-    // Neue Kaktus an sicherem Abstand spawn
-    let lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : width + 200;
-    let gap = Math.random() * (maxGap - minGap) + minGap;
-    boxes.push({ x: lastX + gap, y: height - groundHeight });
+  // Kakteen entfernen, wenn sie aus dem Bild sind & neuen spawnen
+  while (cacti.length > 0 && cacti[0].x + lampakaSize * 0.5 < 0) {
+    cacti.shift();
+    spawnCactus();
     score++;
     if (score > highscore) {
       highscore = score;
       localStorage.setItem('highscore', highscore);
     }
+    // Geschwindigkeit erhöhen alle 5 Punkte
     if (score % 5 === 0) speed += 0.5;
   }
 
-  // Kollisionserkennung
-  for (let box of boxes) {
-    const cactusW = lampakaSize * 0.5;
-    const cactusH = lampakaSize;
+  // Kollision prüfen
+  for (let c of cacti) {
+    let cactusW = lampakaSize * 0.5;
+    let cactusH = lampakaSize;
     if (
-      lampaka.x < box.x + cactusW &&
-      lampaka.x + lampakaSize > box.x &&
-      lampaka.y + lampakaSize > box.y - cactusH
+      lampaka.x < c.x + cactusW &&
+      lampaka.x + lampakaSize > c.x &&
+      lampaka.y + lampakaSize > c.y - cactusH
     ) {
       gameOver = true;
       setTimeout(resetGame, 1500);
@@ -144,16 +161,18 @@ function update() {
   }
 }
 
+// Spiel zurücksetzen nach Game Over
 function resetGame() {
   score = 0;
-  speed = 4;
+  speed = 3;
   lampaka.y = height - groundHeight - lampakaSize;
   lampaka.vy = 0;
   lampaka.jumping = false;
   gameOver = false;
-  initBoxes();
+  initCacti();
 }
 
+// Zeichnen auf Canvas
 function draw() {
   ctx.clearRect(0, 0, width, height);
 
@@ -161,11 +180,11 @@ function draw() {
   ctx.fillStyle = '#87CEFA';
   ctx.fillRect(0, 0, width, height);
 
-  // Boden
+  // Boden grün
   ctx.fillStyle = '#228B22';
   ctx.fillRect(0, height - groundHeight, width, groundHeight);
 
-  // Lampaka
+  // Lampaka zeichnen (Bild oder rote Box als Platzhalter)
   if (lampakaImg.complete && lampakaImg.naturalWidth !== 0) {
     ctx.drawImage(lampakaImg, lampaka.x, lampaka.y, lampakaSize, lampakaSize);
   } else {
@@ -173,12 +192,12 @@ function draw() {
     ctx.fillRect(lampaka.x, lampaka.y, lampakaSize, lampakaSize);
   }
 
-  // Kakteen
-  for (let box of boxes) {
-    drawCactus(box.x, box.y, lampakaSize);
+  // Kakteen zeichnen
+  for (let c of cacti) {
+    drawCactus(c.x, c.y, lampakaSize);
   }
 
-  // Score
+  // Punkte und Highscore
   ctx.fillStyle = 'white';
   ctx.font = '30px monospace';
   ctx.fillText(`Punkte: ${score}`, 20, 50);
@@ -196,14 +215,15 @@ function draw() {
   }
 }
 
+// Hauptloop
 function loop() {
   update();
   draw();
   requestAnimationFrame(loop);
 }
+
 loop();
 
 </script>
-
 </body>
 </html>
