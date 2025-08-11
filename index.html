@@ -36,14 +36,18 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
+// Dynamisches groundY relativ zur Canvas-Höhe
+function getGroundY() {
+  return canvas.height * (1600 / baseHeight);
+}
+
 // Spielfigur
-let lampaka = { x: 200, y: 1600, vy: 0, jumping: false };
-let lampakaWidth = 50;  // Bildgröße gleich Boxen-Größe
+let lampaka = { x: 200, y: 0, vy: 0, jumping: false };
+let lampakaWidth = 50;
 let lampakaHeight = 50;
-let gravity = 0.06;       // Angepasste kleinere Gravitation (Zeitabhängig)
-let jumpStrength = -1.8;  // Stärkerer Sprung (zeitabhängig)
-let groundY = 1600;
-let speed = 8;
+let gravity = 0.06;
+let jumpStrength = -2.6;  // höherer Sprung
+let speed = 4;            // langsamere Startgeschwindigkeit
 let score = 0;
 let highscore = 0;
 let gamePaused = false;
@@ -52,21 +56,24 @@ let gamePaused = false;
 let boxes = [];
 let boxWidth = 50;
 let boxHeight = 50;
-let minGap = 300;
-let maxGap = 800;
+let minGap = 600;     // größerer Abstand
+let maxGap = 1200;
 
 function spawnBox() {
   let lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : baseWidth;
   let gap = Math.floor(Math.random() * (maxGap - minGap) + minGap);
-  boxes.push({ x: lastX + gap, y: groundY + (lampakaHeight - boxHeight) });
+  boxes.push({ x: lastX + gap, y: getGroundY() + (lampakaHeight - boxHeight) });
 }
+
+// Initial position
+lampaka.y = getGroundY();
 
 // Erste Hindernisse
 for (let i = 0; i < 5; i++) spawnBox();
 
 // Lampaka Bild laden
 const lampakaImg = new Image();
-lampakaImg.src = "Lampaka.png";  // Pfad zu deinem Bild, ggf. anpassen
+lampakaImg.src = "Lampaka.png";  // Pfad zu deinem Bild
 
 // Steuerung
 function jump() {
@@ -84,6 +91,8 @@ let lastTime = 0;
 function update(delta) {
   if (gamePaused) return;
 
+  let groundY = getGroundY();
+
   lampaka.vy += gravity * delta;
   lampaka.y += lampaka.vy * delta;
 
@@ -94,7 +103,7 @@ function update(delta) {
   }
 
   for (let box of boxes) {
-    box.x -= speed * (delta / 16.67); // 16.67ms ≈ 60fps Basis
+    box.x -= speed * (delta / 16.67);
   }
 
   if (boxes[0].x + boxWidth < 0) {
@@ -105,19 +114,20 @@ function update(delta) {
     if (score % 5 === 0) speed += 0.5;
   }
 
-  // Kollision → kurzer Stopp (leicht vergrößerte Kollisionshöhe, damit Lampaka nicht zu früh „berührt“)
+  // Kollision mit leicht verzögerter Höhe
   for (let box of boxes) {
     if (
       lampaka.x < box.x + boxWidth &&
       lampaka.x + lampakaWidth > box.x &&
-      lampaka.y + lampakaHeight * 0.8 > box.y
+      lampaka.y + lampakaHeight * 0.95 > box.y
     ) {
       gamePaused = true;
       setTimeout(() => {
         score = 1;
-        speed = 8;
+        speed = 4;
         boxes = [];
         for (let i = 0; i < 5; i++) spawnBox();
+        lampaka.y = getGroundY();
         gamePaused = false;
       }, 1000);
     }
@@ -133,18 +143,17 @@ function draw() {
 
   // Boden
   ctx.fillStyle = "#228B22";
-  ctx.fillRect(0, groundY + lampakaHeight, baseWidth, baseHeight - groundY);
+  ctx.fillRect(0, getGroundY() + lampakaHeight, baseWidth, baseHeight - getGroundY());
 
-  // Lampaka Bild zeichnen (erst prüfen, ob geladen)
+  // Lampaka Bild zeichnen (Fallback: braunes Rechteck)
   if (lampakaImg.complete && lampakaImg.naturalWidth !== 0) {
     ctx.drawImage(lampakaImg, lampaka.x, lampaka.y, lampakaWidth, lampakaHeight);
   } else {
-    // Falls Bild nicht geladen, fallback: braunes Rechteck
     ctx.fillStyle = "#8B4513";
     ctx.fillRect(lampaka.x, lampaka.y, lampakaWidth, lampakaHeight);
   }
 
-  // Kartons
+  // Hindernisse
   ctx.fillStyle = "#A0522D";
   for (let box of boxes) {
     ctx.fillRect(box.x, box.y, boxWidth, boxHeight);
