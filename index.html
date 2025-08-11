@@ -7,18 +7,16 @@
 <style>
   html, body {
     margin: 0; padding: 0;
-    background: #87CEFA; /* Himmelblau */
+    background: #87CEFA;
     overflow: hidden;
     touch-action: manipulation;
     user-select: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
   }
   canvas {
     display: block;
-    background: #87CEFA;
     width: 100vw;
     height: 100vh;
+    background: #87CEFA;
   }
 </style>
 </head>
@@ -27,7 +25,6 @@
 <canvas id="game"></canvas>
 
 <script>
-// Canvas Setup
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
@@ -41,95 +38,98 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// Spielvariablen
-const groundHeight = 100; // Bodenhöhe vom unteren Bildschirmrand
-const lampakaSize = 80; // Größe Lampaka & Kakteen (quadratisch)
+const groundHeight = 100;
+const lampakaSize = 80;
+
 let lampaka = {
   x: width * 0.15,
   y: height - groundHeight - lampakaSize,
   vy: 0,
   jumping: false
 };
-let gravity = 2.0;
-let jumpStrength = -40;
+
+const gravity = 2.0;
+const jumpStrength = -40;
 let speed = 4;
 let score = 0;
 let highscore = localStorage.getItem('highscore') || 0;
 let gameOver = false;
 
-// Hindernisse (Kakteen)
 let boxes = [];
-const minGap = 400;
+const minGap = 600;  // größerer Abstand für mehr Platz
 const maxGap = 900;
 
-// Lampaka Bild (Sprite)
-// Bitte ersetze die URL durch den Pfad zu deiner Lampaka.png im Projektordner oder einer URL
 const lampakaImg = new Image();
-lampakaImg.src = "Lampaka.png"; // z.B. "Lampaka.png" im gleichen Ordner
+lampakaImg.src = "Lampaka.png"; // Pfad zu deinem Bild
 
-// Kakteen zeichnen
-function drawCactus(x, y, size) {
-  ctx.fillStyle = '#228B22'; // Dunkelgrün
-  const w = size * 0.5;
-  const h = size;
-  ctx.fillRect(x, y - h, w, h); // Stamm
-  ctx.fillRect(x - w * 0.5, y - h * 0.7, w * 0.5, h * 0.3); // linker Arm
-  ctx.fillRect(x + w, y - h * 0.7, w * 0.5, h * 0.3); // rechter Arm
-}
-
-// Boxen erzeugen
+// Spawnt neue Kakteen mit garantiertem Mindestabstand
 function spawnBox() {
-  const lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : width + 200;
-  const gap = Math.random() * (maxGap - minGap) + minGap;
+  let lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : width + 200;
+  let gap = Math.random() * (maxGap - minGap) + minGap;
   boxes.push({ x: lastX + gap, y: height - groundHeight });
 }
-// Initial Boxes
-for (let i = 0; i < 5; i++) spawnBox();
 
-// Steuerung (Springen)
+// Initiale Kakteen erzeugen, mit Abstand zueinander
+function initBoxes() {
+  boxes = [];
+  let currentX = width + 200;
+  for (let i = 0; i < 5; i++) {
+    boxes.push({ x: currentX, y: height - groundHeight });
+    currentX += Math.random() * (maxGap - minGap) + minGap;
+  }
+}
+initBoxes();
+
+function drawCactus(x, y, size) {
+  ctx.fillStyle = '#228B22';
+  const w = size * 0.5;
+  const h = size;
+  ctx.fillRect(x, y - h, w, h);
+  ctx.fillRect(x - w * 0.5, y - h * 0.7, w * 0.5, h * 0.3);
+  ctx.fillRect(x + w, y - h * 0.7, w * 0.5, h * 0.3);
+}
+
 function jump() {
   if (!lampaka.jumping && !gameOver) {
     lampaka.vy = jumpStrength;
     lampaka.jumping = true;
   }
 }
-window.addEventListener('touchstart', e => { e.preventDefault(); jump(); }, {passive:false});
+window.addEventListener('touchstart', e => { e.preventDefault(); jump(); }, { passive: false });
 window.addEventListener('mousedown', jump);
 
-// Update Game
 function update() {
   if (gameOver) return;
 
-  // Physik Lampaka
   lampaka.vy += gravity;
   lampaka.y += lampaka.vy;
 
-  // Auf Boden aufsetzen
   if (lampaka.y > height - groundHeight - lampakaSize) {
     lampaka.y = height - groundHeight - lampakaSize;
     lampaka.vy = 0;
     lampaka.jumping = false;
   }
 
-  // Hindernisse bewegen
   for (let box of boxes) {
     box.x -= speed;
   }
 
-  // Entferne Kakteen, die raus sind + neue erzeugen
-  if (boxes.length > 0 && boxes[0].x < -lampakaSize) {
+  // Entferne Kakteen die raus sind
+  while (boxes.length > 0 && boxes[0].x + lampakaSize * 0.5 < 0) {
     boxes.shift();
-    spawnBox();
+    // Neue Kaktus an sicherem Abstand spawn
+    let lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : width + 200;
+    let gap = Math.random() * (maxGap - minGap) + minGap;
+    boxes.push({ x: lastX + gap, y: height - groundHeight });
     score++;
     if (score > highscore) {
       highscore = score;
       localStorage.setItem('highscore', highscore);
     }
-    // Geschwindigkeit leicht erhöhen alle 5 Punkte
     if (score % 5 === 0) speed += 0.5;
   }
 
-  // Kollision prüfen (vereinfacht: Rechtecke)
+  // Kollisionserkennung
   for (let box of boxes) {
     const cactusW = lampakaSize * 0.5;
     const cactusH = lampakaSize;
@@ -139,36 +139,33 @@ function update() {
       lampaka.y + lampakaSize > box.y - cactusH
     ) {
       gameOver = true;
-      setTimeout(() => {
-        resetGame();
-      }, 1500);
+      setTimeout(resetGame, 1500);
     }
   }
 }
 
-// Reset nach Game Over
 function resetGame() {
   score = 0;
   speed = 4;
   lampaka.y = height - groundHeight - lampakaSize;
   lampaka.vy = 0;
   lampaka.jumping = false;
-  boxes = [];
-  for (let i = 0; i < 5; i++) spawnBox();
   gameOver = false;
+  initBoxes();
 }
 
-// Zeichnen
 function draw() {
-  // Hintergrund Himmel
+  ctx.clearRect(0, 0, width, height);
+
+  // Himmel
   ctx.fillStyle = '#87CEFA';
   ctx.fillRect(0, 0, width, height);
 
-  // Boden grün
+  // Boden
   ctx.fillStyle = '#228B22';
   ctx.fillRect(0, height - groundHeight, width, groundHeight);
 
-  // Lampaka zeichnen (Bild oder rotes Rechteck, falls Bild nicht geladen)
+  // Lampaka
   if (lampakaImg.complete && lampakaImg.naturalWidth !== 0) {
     ctx.drawImage(lampakaImg, lampaka.x, lampaka.y, lampakaSize, lampakaSize);
   } else {
@@ -176,16 +173,16 @@ function draw() {
     ctx.fillRect(lampaka.x, lampaka.y, lampakaSize, lampakaSize);
   }
 
-  // Kakteen zeichnen
+  // Kakteen
   for (let box of boxes) {
     drawCactus(box.x, box.y, lampakaSize);
   }
 
-  // Score & Highscore
+  // Score
   ctx.fillStyle = 'white';
   ctx.font = '30px monospace';
-  ctx.fillText('Punkte: ' + score, 20, 50);
-  ctx.fillText('Highscore: ' + highscore, 20, 90);
+  ctx.fillText(`Punkte: ${score}`, 20, 50);
+  ctx.fillText(`Highscore: ${highscore}`, 20, 90);
 
   // Game Over Overlay
   if (gameOver) {
@@ -194,18 +191,18 @@ function draw() {
     ctx.fillStyle = 'white';
     ctx.font = '80px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('GAME OVER', width/2, height/2);
+    ctx.fillText('GAME OVER', width / 2, height / 2);
     ctx.textAlign = 'start';
   }
 }
 
-// Game Loop
 function loop() {
   update();
   draw();
   requestAnimationFrame(loop);
 }
 loop();
+
 </script>
 
 </body>
