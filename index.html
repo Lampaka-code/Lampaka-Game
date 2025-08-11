@@ -14,9 +14,9 @@
   }
   canvas {
     display: block;
-    background: #87CEFA;
     width: 100vw;
     height: 100vh;
+    background: #87CEFA; /* Himmelblau */
   }
 </style>
 </head>
@@ -34,11 +34,9 @@
   window.addEventListener('resize', resize);
   resize();
 
-  // Spielfigur-Bild laden
   const lampakaImg = new Image();
-  lampakaImg.src = "LAmpaka.png"; // Hier deinen Bildpfad anpassen!
+  lampakaImg.src = "LAmpaka.png"; // Bildpfad anpassen!
 
-  // Maße Kakteen & Spielfigur
   const boxWidth = 80;
   const boxHeight = 140;
   const lampakaWidth = boxWidth;
@@ -46,9 +44,10 @@
 
   const gravity = 1.4;
   const jumpStrength = -25;
-  let speed = 4; // langsamere Geschwindigkeit
+  let speed = 4;
 
   function getGroundY() {
+    // Boden bei 90% der Canvas-Höhe
     return canvas.height * 0.9;
   }
 
@@ -157,21 +156,17 @@
   }
 
   function draw() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    // Himmel
-    ctx.fillStyle = "#87CEFA";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
+    // Himmel (Canvas Hintergrund übernimmt das)
 
     // Boden
     ctx.fillStyle = "#228B22";
     ctx.fillRect(0, getGroundY(), canvas.width, canvas.height - getGroundY());
 
-    // Lampaka Bild zeichnen (erst wenn geladen)
-    if(lampakaImg.complete) {
+    // Lampaka Bild zeichnen (Platzhalter wenn noch nicht geladen)
+    if(lampakaImg.complete && lampakaImg.naturalWidth !== 0) {
       ctx.drawImage(lampakaImg, lampaka.x, lampaka.y, lampakaWidth, lampakaHeight);
     } else {
-      // Platzhalter rot, falls Bild nicht da
+      // roter Platzhalter
       ctx.fillStyle = "#ff4444";
       ctx.fillRect(lampaka.x, lampaka.y, lampakaWidth, lampakaHeight);
     }
@@ -181,7 +176,7 @@
       drawCactus(box.x, box.y);
     }
 
-    // Score
+    // Punkte
     ctx.fillStyle = "#fff";
     ctx.font = "36px monospace";
     ctx.fillText(`Punkte: ${score}`, 30, 50);
