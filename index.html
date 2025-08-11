@@ -1,221 +1,181 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Lampaka Jump - Stabiler Abstand</title>
+<meta charset="UTF-8">
+<title>Lampaka Jump</title>
 <style>
   html, body {
-    margin: 0; padding: 0;
-    background: #87CEFA;
+    margin: 0;
+    padding: 0;
+    background: #000;
     overflow: hidden;
-    user-select: none;
-    touch-action: manipulation;
+    touch-action: none; /* verhindert Scrollen beim Tippen */
   }
   canvas {
+    image-rendering: pixelated;
     display: block;
-    width: 100vw;
-    height: 100vh;
     background: #87CEFA;
   }
 </style>
 </head>
 <body>
-
 <canvas id="game"></canvas>
-
 <script>
-// Canvas Setup
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-let width, height;
-function resize() {
-  width = window.innerWidth;
-  height = window.innerHeight;
-  canvas.width = width;
-  canvas.height = height;
+// Basisgröße für Skalierung
+const baseWidth = 1080;
+const baseHeight = 1920;
+
+// Größenanpassung an Bildschirm
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
-window.addEventListener('resize', resize);
-resize();
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
-// Spielparameter
-const groundHeight = 100; // Höhe des Bodens
-const lampakaSize = 80;   // Größe von Lampaka und Kakteen
-
-// Lampaka Objekt
-let lampaka = {
-  x: width * 0.15,
-  y: height - groundHeight - lampakaSize,
-  vy: 0,
-  jumping: false
-};
-
-// Physik & Bewegung
-const gravity = 2;
-const jumpStrength = -40;
-let speed = 3;  // langsamere Geschwindigkeit
+// Spielfigur (kleiner gemacht)
+let lampaka = { x: 200, y: 1600, vy: 0, jumping: false };
+let lampakaWidth = 60;
+let lampakaHeight = 60;
+let gravity = 1.2;
+let jumpStrength = -30; // Höherer Sprung
+let groundY = 1600;
+let speed = 8;
 let score = 0;
-let highscore = localStorage.getItem('highscore') || 0;
-let gameOver = false;
+let highscore = 0;
+let gamePaused = false;
 
-// Kakteen
-let cacti = [];
-const minGap = 700; // Mindestabstand zwischen Kakteen
-const maxGap = 1200;
+// Hindernisse (kleiner und kompakter)
+let boxes = [];
+let boxWidth = 50;
+let boxHeight = 50;
+let minGap = 300;
+let maxGap = 800;
 
-// Bild für Lampaka laden (bitte "Lampaka.png" in gleichen Ordner legen)
-const lampakaImg = new Image();
-lampakaImg.src = "Lampaka.png";
-
-// Hilfsfunktion: Neuer Kaktus anlegen mit garantiertem Abstand
-function spawnCactus() {
-  // Letzter Kaktus oder Bildschirmende als Startpunkt
-  let lastX = cacti.length > 0 ? cacti[cacti.length - 1].x : width + 200;
-  // Abstand zufällig zwischen minGap und maxGap
-  let gap = Math.random() * (maxGap - minGap) + minGap;
-  // Neuer Kaktus positionieren
-  cacti.push({ x: lastX + gap, y: height - groundHeight });
+function spawnBox() {
+  let lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : baseWidth;
+  let gap = Math.floor(Math.random() * (maxGap - minGap) + minGap);
+  boxes.push({ x: lastX + gap, y: groundY + (lampakaHeight - boxHeight) });
 }
 
-// Initial 5 Kakteen generieren
-function initCacti() {
-  cacti = [];
-  let currentX = width + 200;
-  for (let i = 0; i < 5; i++) {
-    cacti.push({ x: currentX, y: height - groundHeight });
-    currentX += Math.random() * (maxGap - minGap) + minGap;
-  }
-}
-initCacti();
+// Erste Hindernisse
+for (let i = 0; i < 5; i++) spawnBox();
 
-// Zeichnet einen Kaktus als grüne Pixel-Form, passend zur Größe
-function drawCactus(x, y, size) {
-  const w = size * 0.5;
-  const h = size;
-
-  ctx.fillStyle = '#228B22';
-  // Stamm
-  ctx.fillRect(x, y - h, w, h);
-  // Linker Arm
-  ctx.fillRect(x - w * 0.5, y - h * 0.7, w * 0.5, h * 0.3);
-  // Rechter Arm
-  ctx.fillRect(x + w, y - h * 0.7, w * 0.5, h * 0.3);
-}
-
-// Sprung-Funktion, auf Touch oder Klick reagieren
+// Steuerung
 function jump() {
-  if (!lampaka.jumping && !gameOver) {
+  if (!lampaka.jumping && !gamePaused) {
     lampaka.vy = jumpStrength;
     lampaka.jumping = true;
   }
 }
-window.addEventListener('touchstart', e => { e.preventDefault(); jump(); }, { passive: false });
-window.addEventListener('mousedown', jump);
+canvas.addEventListener("touchstart", jump);
+canvas.addEventListener("mousedown", jump);
 
-// Update Logik
 function update() {
-  if (gameOver) return;
+  if (gamePaused) return;
 
-  // Schwerkraft & Bewegung
   lampaka.vy += gravity;
   lampaka.y += lampaka.vy;
 
-  // Auf Boden begrenzen
-  if (lampaka.y > height - groundHeight - lampakaSize) {
-    lampaka.y = height - groundHeight - lampakaSize;
+  if (lampaka.y >= groundY) {
+    lampaka.y = groundY;
     lampaka.vy = 0;
     lampaka.jumping = false;
   }
 
-  // Kakteen bewegen
-  for (let c of cacti) {
-    c.x -= speed;
+  for (let box of boxes) {
+    box.x -= speed;
   }
 
-  // Kakteen entfernen, wenn sie aus dem Bild sind & neuen spawnen
-  while (cacti.length > 0 && cacti[0].x + lampakaSize * 0.5 < 0) {
-    cacti.shift();
-    spawnCactus();
+  if (boxes[0].x + boxWidth < 0) {
+    boxes.shift();
+    spawnBox();
     score++;
-    if (score > highscore) {
-      highscore = score;
-      localStorage.setItem('highscore', highscore);
-    }
-    // Geschwindigkeit erhöhen alle 5 Punkte
+    if (score > highscore) highscore = score;
     if (score % 5 === 0) speed += 0.5;
   }
 
-  // Kollision prüfen
-  for (let c of cacti) {
-    let cactusW = lampakaSize * 0.5;
-    let cactusH = lampakaSize;
+  // Kollision → kurzer Stopp
+  for (let box of boxes) {
     if (
-      lampaka.x < c.x + cactusW &&
-      lampaka.x + lampakaSize > c.x &&
-      lampaka.y + lampakaSize > c.y - cactusH
+      lampaka.x < box.x + boxWidth &&
+      lampaka.x + lampakaWidth > box.x &&
+      lampaka.y + lampakaHeight > box.y
     ) {
-      gameOver = true;
-      setTimeout(resetGame, 1500);
+      gamePaused = true;
+      setTimeout(() => {
+        score = 1;
+        speed = 8;
+        boxes = [];
+        for (let i = 0; i < 5; i++) spawnBox();
+        gamePaused = false;
+      }, 1000);
     }
   }
 }
 
-// Spiel zurücksetzen nach Game Over
-function resetGame() {
-  score = 0;
-  speed = 3;
-  lampaka.y = height - groundHeight - lampakaSize;
-  lampaka.vy = 0;
-  lampaka.jumping = false;
-  gameOver = false;
-  initCacti();
+function drawLampaka(x, y) {
+  // Körper
+  ctx.fillStyle = "#8B4513"; // Braun
+  ctx.fillRect(x, y, lampakaWidth, lampakaHeight);
+
+  // Kopf
+  ctx.fillRect(x + lampakaWidth - 20, y - 25, 40, 40);
+
+  // Auge
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(x + lampakaWidth + 5, y - 15, 8, 8);
+  ctx.fillStyle = "#000";
+  ctx.fillRect(x + lampakaWidth + 7, y - 13, 4, 4);
+
+  // Weihnachtsmütze
+  ctx.fillStyle = "#ff0000";
+  ctx.fillRect(x + lampakaWidth - 20, y - 45, 40, 15); // Rot
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(x + lampakaWidth - 20, y - 30, 40, 4); // Weißer Rand
+  ctx.fillRect(x + lampakaWidth + 20, y - 55, 8, 8); // Bommel
 }
 
-// Zeichnen auf Canvas
 function draw() {
-  ctx.clearRect(0, 0, width, height);
+  let scaleX = canvas.width / baseWidth;
+  let scaleY = canvas.height / baseHeight;
+  ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
 
-  // Himmel
-  ctx.fillStyle = '#87CEFA';
-  ctx.fillRect(0, 0, width, height);
+  ctx.clearRect(0, 0, baseWidth, baseHeight);
 
-  // Boden grün
-  ctx.fillStyle = '#228B22';
-  ctx.fillRect(0, height - groundHeight, width, groundHeight);
+  // Boden
+  ctx.fillStyle = "#228B22";
+  ctx.fillRect(0, groundY + lampakaHeight, baseWidth, baseHeight - groundY);
 
-  // Lampaka zeichnen (Bild oder rote Box als Platzhalter)
-  if (lampakaImg.complete && lampakaImg.naturalWidth !== 0) {
-    ctx.drawImage(lampakaImg, lampaka.x, lampaka.y, lampakaSize, lampakaSize);
-  } else {
-    ctx.fillStyle = 'red';
-    ctx.fillRect(lampaka.x, lampaka.y, lampakaSize, lampakaSize);
+  // Lampaka
+  drawLampaka(lampaka.x, lampaka.y);
+
+  // Kartons
+  ctx.fillStyle = "#A0522D";
+  for (let box of boxes) {
+    ctx.fillRect(box.x, box.y, boxWidth, boxHeight);
   }
 
-  // Kakteen zeichnen
-  for (let c of cacti) {
-    drawCactus(c.x, c.y, lampakaSize);
+  // Punkte
+  ctx.fillStyle = "#fff";
+  ctx.font = "48px monospace";
+  ctx.fillText("Punkte: " + score, 50, 100);
+  ctx.fillText("Highscore: " + highscore, 50, 170);
+
+  if (gamePaused) {
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, 0, baseWidth, baseHeight);
+    ctx.fillStyle = "#fff";
+    ctx.font = "80px monospace";
+    ctx.fillText("💥", baseWidth / 2 - 40, baseHeight / 2);
   }
 
-  // Punkte und Highscore
-  ctx.fillStyle = 'white';
-  ctx.font = '30px monospace';
-  ctx.fillText(`Punkte: ${score}`, 20, 50);
-  ctx.fillText(`Highscore: ${highscore}`, 20, 90);
-
-  // Game Over Overlay
-  if (gameOver) {
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0, 0, width, height);
-    ctx.fillStyle = 'white';
-    ctx.font = '80px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('GAME OVER', width / 2, height / 2);
-    ctx.textAlign = 'start';
-  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
-// Hauptloop
 function loop() {
   update();
   draw();
@@ -223,7 +183,6 @@ function loop() {
 }
 
 loop();
-
 </script>
 </body>
 </html>
