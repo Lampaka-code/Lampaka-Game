@@ -27,7 +27,6 @@
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
 
-  // Bildschirm anpassen
   function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -35,19 +34,24 @@
   window.addEventListener('resize', resize);
   resize();
 
-  // Spielfigur Eigenschaften
-  const lampakaWidth = 60;
-  const lampakaHeight = 60;
+  // Spielfigur-Bild laden
+  const lampakaImg = new Image();
+  lampakaImg.src = "LAmpaka.png"; // Hier deinen Bildpfad anpassen!
+
+  // Maße Kakteen & Spielfigur
+  const boxWidth = 80;
+  const boxHeight = 140;
+  const lampakaWidth = boxWidth;
+  const lampakaHeight = boxHeight;
+
   const gravity = 1.4;
   const jumpStrength = -25;
-  let speed = 8;
+  let speed = 4; // langsamere Geschwindigkeit
 
-  // Bodenhöhe (90% der Höhe)
   function getGroundY() {
     return canvas.height * 0.9;
   }
 
-  // Spielfigur Objekt
   let lampaka = {
     x: canvas.width * 0.1,
     y: getGroundY() - lampakaHeight,
@@ -55,12 +59,9 @@
     jumping: false
   };
 
-  // Hindernisse (Kakteen)
-  const boxWidth = 40;
-  const boxHeight = 70;
   let boxes = [];
-  const minGap = 400;
-  const maxGap = 900;
+  const minGap = 600;
+  const maxGap = 1200;
 
   let score = 0;
   let highscore = localStorage.getItem("highscore") || 0;
@@ -76,7 +77,7 @@
   }
 
   function initGame() {
-    speed = 8;
+    speed = 4;
     score = 0;
     gamePaused = false;
     lampaka.y = getGroundY() - lampakaHeight;
@@ -99,11 +100,9 @@
   function update() {
     if(gamePaused) return;
 
-    // Physik Update
     lampaka.vy += gravity;
     lampaka.y += lampaka.vy;
 
-    // Boden Kollisionscheck
     let groundY = getGroundY();
     if(lampaka.y + lampakaHeight > groundY) {
       lampaka.y = groundY - lampakaHeight;
@@ -111,12 +110,10 @@
       lampaka.jumping = false;
     }
 
-    // Hindernisse bewegen
     for(let box of boxes) {
       box.x -= speed;
     }
 
-    // Hindernisse entfernen und neue erzeugen
     if(boxes.length && boxes[0].x + boxWidth < 0) {
       boxes.shift();
       spawnBox();
@@ -125,10 +122,9 @@
         highscore = score;
         localStorage.setItem("highscore", highscore);
       }
-      if(score % 5 === 0) speed += 0.5;
+      if(score % 5 === 0) speed += 0.3;
     }
 
-    // Kollision prüfen
     for(let box of boxes) {
       if(
         lampaka.x < box.x + boxWidth &&
@@ -143,20 +139,19 @@
     }
   }
 
-  // Zeichne Kakteen (kleine grüne Pixel-Kakteen)
   function drawCactus(x, y) {
     ctx.fillStyle = "#228B22";
     // Stamm
-    ctx.fillRect(x + 12, y + 25, 16, 45);
+    ctx.fillRect(x + 24, y + 45, 32, 90);
     // linker Arm
-    ctx.fillRect(x + 2, y + 40, 12, 15);
+    ctx.fillRect(x + 4, y + 70, 24, 30);
     // rechter Arm
-    ctx.fillRect(x + 28, y + 40, 12, 15);
-    // Spitze
+    ctx.fillRect(x + 56, y + 70, 24, 30);
+    // Spitze (Dreieck)
     ctx.beginPath();
-    ctx.moveTo(x + 20, y + 10);
-    ctx.lineTo(x + 10, y + 25);
-    ctx.lineTo(x + 30, y + 25);
+    ctx.moveTo(x + 40, y + 20);
+    ctx.lineTo(x + 20, y + 45);
+    ctx.lineTo(x + 60, y + 45);
     ctx.closePath();
     ctx.fill();
   }
@@ -172,9 +167,14 @@
     ctx.fillStyle = "#228B22";
     ctx.fillRect(0, getGroundY(), canvas.width, canvas.height - getGroundY());
 
-    // Spielfigur (Platzhalter rotes Rechteck)
-    ctx.fillStyle = "#ff4444";
-    ctx.fillRect(lampaka.x, lampaka.y, lampakaWidth, lampakaHeight);
+    // Lampaka Bild zeichnen (erst wenn geladen)
+    if(lampakaImg.complete) {
+      ctx.drawImage(lampakaImg, lampaka.x, lampaka.y, lampakaWidth, lampakaHeight);
+    } else {
+      // Platzhalter rot, falls Bild nicht da
+      ctx.fillStyle = "#ff4444";
+      ctx.fillRect(lampaka.x, lampaka.y, lampakaWidth, lampakaHeight);
+    }
 
     // Kakteen zeichnen
     for(let box of boxes) {
@@ -187,7 +187,6 @@
     ctx.fillText(`Punkte: ${score}`, 30, 50);
     ctx.fillText(`Highscore: ${highscore}`, 30, 90);
 
-    // Game Over Overlay
     if(gamePaused) {
       ctx.fillStyle = "rgba(0,0,0,0.5)";
       ctx.fillRect(0,0,canvas.width,canvas.height);
