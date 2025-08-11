@@ -25,19 +25,19 @@ const ctx = canvas.getContext("2d");
 const baseWidth = 1080;
 const baseHeight = 1920;
 
-// Spielfigur-Bild vorbereiten
+// Lampaka Bild vorbereiten
 const lampakaImg = new Image();
-let useImage = false;
-// lampakaImg.src = "LAmpaka.png"; // Hier dein Bild einfügen
+// lampakaImg.src = "LAmpaka.png"; // Hier Pfad zum Bild einfügen, falls vorhanden
 
+let useImage = false;
 lampakaImg.onload = () => {
   useImage = true;
-  console.log("Spielfigur-Bild geladen");
+  console.log("Bild geladen!");
   initGame();
   loop();
 };
 lampakaImg.onerror = () => {
-  console.warn("Kein Bild gefunden, Platzhalter wird benutzt");
+  console.log("Kein Bild geladen, Platzhalter wird benutzt");
   initGame();
   loop();
 };
@@ -49,29 +49,30 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// Spielfigur
-let lampaka = { x: 200, y: 0, vy: 0, jumping: false };
+// Spielfigur und Spielparameter
 const lampakaWidth = 60;
 const lampakaHeight = 60;
 const gravity = 1.2;
 const jumpStrength = -28;
-let groundY = 0;
+let groundY = baseHeight - 200; // Bodenhöhe (y-Koordinate für Boden)
 let speed = 8;
 let score = 0;
 let highscore = 0;
 let gamePaused = false;
 
-// Hindernisse (Kakteen)
+let lampaka = { x: 200, y: groundY - lampakaHeight, vy: 0, jumping: false }; 
+// y = oberer Rand des Charakters, damit Füße auf Boden sind (groundY)
+
 const boxWidth = 50;
-const boxHeight = 70;  // Kakteen sind etwas höher
+const boxHeight = 70;
 const minGap = 700;
 const maxGap = 1400;
-
 let boxes = [];
 
 function initGame() {
-  groundY = baseHeight - 200;
-  lampaka.y = groundY;
+  lampaka.y = groundY - lampakaHeight;
+  lampaka.vy = 0;
+  lampaka.jumping = false;
 
   score = 0;
   speed = 8;
@@ -83,7 +84,7 @@ function initGame() {
 function spawnBox() {
   let lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : baseWidth;
   let gap = Math.floor(Math.random() * (maxGap - minGap) + minGap);
-  boxes.push({ x: lastX + gap, y: groundY - boxHeight }); // steht auf Boden
+  boxes.push({ x: lastX + gap, y: groundY - boxHeight }); // Kakteen stehen auf Boden
 }
 
 function jump() {
@@ -101,16 +102,19 @@ function update() {
   lampaka.vy += gravity;
   lampaka.y += lampaka.vy;
 
-  if (lampaka.y > groundY) {
-    lampaka.y = groundY;
+  // Boden-Kollision
+  if (lampaka.y + lampakaHeight > groundY) {
+    lampaka.y = groundY - lampakaHeight; // oben an Boden setzen
     lampaka.vy = 0;
     lampaka.jumping = false;
   }
 
+  // Hindernisse bewegen
   for (let box of boxes) {
     box.x -= speed;
   }
 
+  // Hindernis verschwunden? Entfernen und neu spawnen
   if (boxes.length && boxes[0].x + boxWidth < 0) {
     boxes.shift();
     spawnBox();
@@ -119,7 +123,7 @@ function update() {
     if (score % 5 === 0) speed += 0.5;
   }
 
-  // Kollision
+  // Kollision prüfen
   for (let box of boxes) {
     if (
       lampaka.x < box.x + boxWidth &&
@@ -158,29 +162,30 @@ function draw() {
 
   ctx.clearRect(0, 0, baseWidth, baseHeight);
 
-  // Boden
+  // Boden zeichnen
   ctx.fillStyle = "#228B22";
-  ctx.fillRect(0, groundY + lampakaHeight, baseWidth, baseHeight - groundY);
+  ctx.fillRect(0, groundY, baseWidth, baseHeight - groundY);
 
-  // Spielfigur
+  // Spielfigur zeichnen
   if (useImage) {
-    ctx.drawImage(lampakaImg, lampaka.x, lampaka.y - lampakaHeight, lampakaWidth, lampakaHeight);
+    ctx.drawImage(lampakaImg, lampaka.x, lampaka.y, lampakaWidth, lampakaHeight);
   } else {
-    ctx.fillStyle = "#ff4444"; // Platzhalter-Farbe
-    ctx.fillRect(lampaka.x, lampaka.y - lampakaHeight, lampakaWidth, lampakaHeight);
+    ctx.fillStyle = "#ff4444"; // Platzhalter rot
+    ctx.fillRect(lampaka.x, lampaka.y, lampakaWidth, lampakaHeight);
   }
 
   // Kakteen zeichnen
   for (let box of boxes) {
-    drawCactus(box.x, box.y - boxHeight);
+    drawCactus(box.x, box.y);
   }
 
-  // Punkte
+  // Punkte anzeigen
   ctx.fillStyle = "#fff";
   ctx.font = "48px monospace";
   ctx.fillText("Punkte: " + score, 50, 100);
   ctx.fillText("Highscore: " + highscore, 50, 170);
 
+  // Game Over Overlay
   if (gamePaused) {
     ctx.fillStyle = "rgba(0,0,0,0.5)";
     ctx.fillRect(0, 0, baseWidth, baseHeight);
@@ -198,9 +203,9 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-// Falls kein Bild gesetzt wird, Spiel mit Platzhalter starten
 if (!lampakaImg.src) {
-  console.warn("Kein Bild geladen – starte mit Platzhalter");
+  // Ohne Bild starten
+  console.log("Kein Bild geladen, starte mit Platzhalter");
   initGame();
   loop();
 }
