@@ -26,9 +26,17 @@ const ctx = canvas.getContext("2d");
 const baseWidth = 1080;
 const baseHeight = 1920;
 
-// Bild vom Lampaka laden
+// Bild vom Lampaka laden (Pfad ggf. anpassen)
 const lampakaImg = new Image();
-lampakaImg.src = "https://raw.githubusercontent.com/deinname/deinrepo/main/lampaka.png"; // URL anpassen!
+lampakaImg.src = "lampaka.png"; // im selben Ordner wie HTML
+lampakaImg.onload = () => {
+  console.log("Lampaka Bild geladen!");
+  initGame();
+  loop();
+};
+lampakaImg.onerror = () => {
+  console.error("Lampaka Bild konnte nicht geladen werden!");
+};
 
 function resizeCanvas() {
   canvas.width = window.innerWidth;
@@ -38,12 +46,12 @@ window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 // Spielfigur
-let lampaka = { x: 200, y: 1600, vy: 0, jumping: false };
-let lampakaWidth = 80;
-let lampakaHeight = 80;
+let lampaka = { x: 200, y: 0, vy: 0, jumping: false };
+let lampakaWidth = 60;
+let lampakaHeight = 60;
 let gravity = 1.2;
-let jumpStrength = -30;
-let groundY = 1600;
+let jumpStrength = -28;
+let groundY = 0;
 let speed = 8;
 let score = 0;
 let highscore = 0;
@@ -53,16 +61,25 @@ let gamePaused = false;
 let boxes = [];
 let boxWidth = 50;
 let boxHeight = 50;
-let minGap = 600; // neuer größerer Abstand
+let minGap = 700; // größerer Abstand
 let maxGap = 1400;
+
+function initGame() {
+  groundY = baseHeight - 200; // Bodenposition in "virtueller" Höhe
+  lampaka.y = groundY;
+
+  score = 0;
+  speed = 8;
+  boxes = [];
+  for (let i = 0; i < 5; i++) spawnBox();
+  gamePaused = false;
+}
 
 function spawnBox() {
   let lastX = boxes.length > 0 ? boxes[boxes.length - 1].x : baseWidth;
   let gap = Math.floor(Math.random() * (maxGap - minGap) + minGap);
-  boxes.push({ x: lastX + gap, y: groundY + (lampakaHeight - boxHeight) });
+  boxes.push({ x: lastX + gap, y: groundY });
 }
-
-for (let i = 0; i < 5; i++) spawnBox();
 
 function jump() {
   if (!lampaka.jumping && !gamePaused) {
@@ -97,7 +114,7 @@ function update() {
     if (score % 5 === 0) speed += 0.5;
   }
 
-  // "Kollision" -> kurzer Stopp
+  // Kollision prüfen
   for (let box of boxes) {
     if (
       lampaka.x < box.x + boxWidth &&
@@ -106,11 +123,7 @@ function update() {
     ) {
       gamePaused = true;
       setTimeout(() => {
-        score = 1;
-        speed = 8;
-        boxes = [];
-        for (let i = 0; i < 5; i++) spawnBox();
-        gamePaused = false;
+        initGame();
       }, 1000);
     }
   }
@@ -127,16 +140,16 @@ function draw() {
   ctx.fillStyle = "#228B22";
   ctx.fillRect(0, groundY + lampakaHeight, baseWidth, baseHeight - groundY);
 
-  // Lampaka-Bild
-  ctx.drawImage(lampakaImg, lampaka.x, lampaka.y, lampakaWidth, lampakaHeight);
+  // Lampaka zeichnen
+  ctx.drawImage(lampakaImg, lampaka.x, lampaka.y - lampakaHeight, lampakaWidth, lampakaHeight);
 
-  // Kartons
+  // Hindernisse
   ctx.fillStyle = "#A0522D";
   for (let box of boxes) {
     ctx.fillRect(box.x, box.y, boxWidth, boxHeight);
   }
 
-  // Punkte
+  // Punkteanzeige
   ctx.fillStyle = "#fff";
   ctx.font = "48px monospace";
   ctx.fillText("Punkte: " + score, 50, 100);
@@ -158,8 +171,6 @@ function loop() {
   draw();
   requestAnimationFrame(loop);
 }
-
-loop();
 </script>
 </body>
 </html>
