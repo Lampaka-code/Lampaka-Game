@@ -26,16 +26,23 @@ const ctx = canvas.getContext("2d");
 const baseWidth = 1080;
 const baseHeight = 1920;
 
-// Bild vom Lampaka laden (im gleichen Ordner wie HTML)
+// === Spielfigur-Bild vorbereiten ===
 const lampakaImg = new Image();
-lampakaImg.src = "LAmpaka.png"; // Name beachten
+let useImage = false; // bleibt false, bis Bild geladen wird
+// Später hier deinen Dateinamen eintragen:
+// lampakaImg.src = "LAmpaka.png";
+
+// Falls Bild geladen wird
 lampakaImg.onload = () => {
-  console.log("Lampaka Bild geladen!");
+  useImage = true;
+  console.log("Spielfigur-Bild geladen");
   initGame();
   loop();
 };
 lampakaImg.onerror = () => {
-  console.error("LAmpaka.png konnte nicht geladen werden!");
+  console.warn("Kein Bild gefunden, Platzhalter wird benutzt");
+  initGame();
+  loop();
 };
 
 function resizeCanvas() {
@@ -47,7 +54,7 @@ resizeCanvas();
 
 // Spielfigur
 let lampaka = { x: 200, y: 0, vy: 0, jumping: false };
-let lampakaWidth = 60;  // Spielfigur kleiner
+let lampakaWidth = 60;
 let lampakaHeight = 60;
 let gravity = 1.2;
 let jumpStrength = -28;
@@ -61,7 +68,7 @@ let gamePaused = false;
 let boxes = [];
 let boxWidth = 50;
 let boxHeight = 50;
-let minGap = 700;  // größerer Abstand
+let minGap = 700;
 let maxGap = 1400;
 
 function initGame() {
@@ -140,8 +147,13 @@ function draw() {
   ctx.fillStyle = "#228B22";
   ctx.fillRect(0, groundY + lampakaHeight, baseWidth, baseHeight - groundY);
 
-  // Lampaka zeichnen
-  ctx.drawImage(lampakaImg, lampaka.x, lampaka.y - lampakaHeight, lampakaWidth, lampakaHeight);
+  // Spielfigur
+  if (useImage) {
+    ctx.drawImage(lampakaImg, lampaka.x, lampaka.y - lampakaHeight, lampakaWidth, lampakaHeight);
+  } else {
+    ctx.fillStyle = "#ff4444"; // Platzhalter-Farbe
+    ctx.fillRect(lampaka.x, lampaka.y - lampakaHeight, lampakaWidth, lampakaHeight);
+  }
 
   // Hindernisse
   ctx.fillStyle = "#A0522D";
@@ -170,6 +182,13 @@ function loop() {
   update();
   draw();
   requestAnimationFrame(loop);
+}
+
+// Falls kein Bild gesetzt wird, Spiel mit Platzhalter starten
+if (!lampakaImg.src) {
+  console.warn("Kein Bild geladen – starte mit Platzhalter");
+  initGame();
+  loop();
 }
 </script>
 </body>
